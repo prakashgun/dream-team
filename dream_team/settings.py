@@ -40,6 +40,7 @@ INSTALLED_APPS = [
     'rest_framework',
 
     # App
+    'user_management',
     'performance'
 ]
 
