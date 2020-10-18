@@ -62,6 +62,7 @@ class Player(models.Model):
 class PlayerStats(models.Model):
     player = models.ForeignKey(Player, on_delete=models.PROTECT)
     match_type = models.ForeignKey(MatchType, on_delete=models.CASCADE)
+    current_team = models.ForeignKey(Team, on_delete=models.PROTECT)
     matches = models.IntegerField()
     innings = models.IntegerField()
     not_outs = models.IntegerField()
@@ -97,8 +98,8 @@ class Match(models.Model):
     tournament = models.ForeignKey(Tournament, on_delete=models.PROTECT)
     match_type = models.ForeignKey(MatchType, on_delete=models.CASCADE)
     ground = models.ForeignKey(Ground, on_delete=models.PROTECT)
-    batting_first = models.ForeignKey(Team, on_delete=models.PROTECT)
-    bowling_first = models.ForeignKey(Team, on_delete=models.PROTECT)
+    batting_first = models.ForeignKey(Team, on_delete=models.PROTECT, related_name='match_batting_first')
+    bowling_first = models.ForeignKey(Team, on_delete=models.PROTECT, related_name='match_bowling_first')
     match_date = models.DateField()
 
     def __str__(self):
@@ -108,8 +109,8 @@ class Match(models.Model):
 class MatchStats(models.Model):
     match = models.ForeignKey(Match, on_delete=models.CASCADE)
     player = models.ForeignKey(Player, on_delete=models.PROTECT)
-    team = models.ForeignKey(Team, on_delete=models.PROTECT)
-    opposite_team = models.ForeignKey(Team, on_delete=models.PROTECT)
+    team = models.ForeignKey(Team, on_delete=models.PROTECT, related_name='match_stats_team')
+    opposite_team = models.ForeignKey(Team, on_delete=models.PROTECT, related_name='match_stats_opposite_team')
     batted = models.BooleanField()
     bowled = models.BooleanField()
     bat = models.IntegerField()
