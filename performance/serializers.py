@@ -8,5 +8,5 @@ class CrawlInfoSerializer(serializers.Serializer):
     def create(self, validated_data):
         pass
 
-    ids = serializers.CharField(max_length=255, required=True)
+    urls = serializers.ListField(max_length=255, required=True)
 

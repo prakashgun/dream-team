@@ -151,7 +151,7 @@ class CricInfoPlayer:
                 continue
 
             bat_bowl = self.get_crawled_content(self.player_stat_path(engine_table_index, index, 1))
-            stats = bat_bowl.split(',')
+            stats = str(bat_bowl).split(',')
 
             batted = False
             bowled = False

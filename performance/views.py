@@ -1,6 +1,7 @@
 from datetime import datetime
 from time import sleep
-
+from urllib.parse import urlparse
+import os
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
@@ -54,6 +55,9 @@ class CrawlInfoView(APIView):
              match_date_str,
              match_type_name) = match_details
 
+            if not team_name or match_type_name:
+                continue
+
             team, _ = Team.objects.get_or_create(name=team_name)
 
             opposite_team, _ = Team.objects.get_or_create(name=opposite_team_name)
@@ -87,37 +91,38 @@ class CrawlInfoView(APIView):
                 wickets=wickets
             )
 
-        player_stats, _ = PlayerStats.objects.get_or_create(
-            player=player,
-            match_type=current_match_type,
-            current_team=current_team,
-            matches=matches,
-            innings=innings,
-            not_outs=not_outs,
-            runs=runs,
-            highest_score=highest_score,
-            average=float(average),
-            balls=balls,
-            strike_rate=float(strike_rate),
-            hundreds=hundreds,
-            fifties=fifties,
-            fours=fours,
-            sixes=sixes,
-            catches=catches,
-            stumpings=stumpings,
-            bowl_innings=bowl_innings,
-            bowl_balls=bowl_balls,
-            bowl_runs=bowl_runs,
-            bowl_wickets=bowl_wickets,
-            bowl_best_innings=bowl_best_innings,
-            bowl_best_match=bowl_best_match,
-            bowl_average=float(bowl_average),
-            bowl_economy=float(bowl_economy),
-            bowl_stike_rate=float(bowl_stike_rate),
-            bowl_four_wickets=bowl_four_wickets,
-            bowl_five_wickets=bowl_five_wickets,
-            bowl_ten_wickets=bowl_ten_wickets
-        )
+        if current_team and current_match_type:
+            player_stats, _ = PlayerStats.objects.get_or_create(
+                player=player,
+                match_type=current_match_type,
+                current_team=current_team,
+                matches=matches,
+                innings=innings,
+                not_outs=not_outs,
+                runs=runs,
+                highest_score=highest_score,
+                average=float(average),
+                balls=balls,
+                strike_rate=float(strike_rate),
+                hundreds=hundreds,
+                fifties=fifties,
+                fours=fours,
+                sixes=sixes,
+                catches=catches,
+                stumpings=stumpings,
+                bowl_innings=bowl_innings,
+                bowl_balls=bowl_balls,
+                bowl_runs=bowl_runs,
+                bowl_wickets=bowl_wickets,
+                bowl_best_innings=bowl_best_innings,
+                bowl_best_match=bowl_best_match,
+                bowl_average=float(bowl_average),
+                bowl_economy=float(bowl_economy),
+                bowl_stike_rate=float(bowl_stike_rate),
+                bowl_four_wickets=bowl_four_wickets,
+                bowl_five_wickets=bowl_five_wickets,
+                bowl_ten_wickets=bowl_ten_wickets
+            )
 
     def post(self, request):
         # Validate the incoming input (provided through query parameters)
@@ -127,13 +132,10 @@ class CrawlInfoView(APIView):
         # Get the model input
         data = serializer.validated_data
 
-        # crawl_id = os.path.basename(urlparse(data['ids']).path).replace('.html', '')
-
-        ids = data['ids'].split(',')
-
-        for crawl_id in ids:
+        for url in data['urls']:
+            crawl_id = os.path.basename(urlparse(url).path).replace('.html', '')
             sleep(5)
-            self._crawl(crawl_id.strip())
+            self._crawl(crawl_id)
 
         return Response({
             'result': 'Crawled'
