@@ -1,3 +1,8 @@
 django
 djangorestframework
 lxml
+pandas
+numpy
+matplotlib
+scikit-learn
+requests

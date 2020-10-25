@@ -2,6 +2,10 @@ import requests
 from lxml import html
 
 
+class CricInfoException(Exception):
+    pass
+
+
 class CricInfoPlayer:
 
     def __init__(self, crawl_id):
@@ -65,7 +69,7 @@ class CricInfoPlayer:
                 elif 'batting' in playing_role or 'batsman' in playing_role:
                     player_type = 'Batsman'
                 else:
-                    raise Exception('Player type cannot be determined')
+                    raise CricInfoException('Player type cannot be determined')
 
             elif title == 'Batting style':
                 batting_style = self.get_crawled_content(self.player_info_path(index))
@@ -124,14 +128,14 @@ class CricInfoPlayer:
             bowl_best_match = self.get_crawled_content(self.player_stat_path(engine_table_index, index, 8))
             bowl_average = self.get_crawled_content(self.player_stat_path(engine_table_index, index, 9))
             bowl_economy = self.get_crawled_content(self.player_stat_path(engine_table_index, index, 10))
-            bowl_stike_rate = self.get_crawled_content(self.player_stat_path(engine_table_index, index, 11))
+            bowl_strike_rate = self.get_crawled_content(self.player_stat_path(engine_table_index, index, 11))
             bowl_four_wickets = self.get_crawled_content(self.player_stat_path(engine_table_index, index, 12))
             bowl_five_wickets = self.get_crawled_content(self.player_stat_path(engine_table_index, index, 13))
             bowl_ten_wickets = self.get_crawled_content(self.player_stat_path(engine_table_index, index, 14))
 
             return (
                 bowl_innings, bowl_balls, bowl_runs, bowl_wickets, bowl_best_innings, bowl_best_match,
-                bowl_average, bowl_economy, bowl_stike_rate, bowl_four_wickets, bowl_five_wickets, bowl_ten_wickets
+                bowl_average, bowl_economy, bowl_strike_rate, bowl_four_wickets, bowl_five_wickets, bowl_ten_wickets
             )
 
     def get_match_stats(self):
