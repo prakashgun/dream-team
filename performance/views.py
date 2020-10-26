@@ -1,16 +1,17 @@
+import csv
+import os
 from datetime import datetime
 from time import sleep
 from urllib.parse import urlparse
-import os
+
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from .crawlers import CricInfoPlayer, CricInfoException
 from .models import (Player, PlayerType, BattingStyle, BowlingStyle, PlayerStats, Team, MatchType, Ground,
                      Tournament, MatchStats, Match)
-from .serializers import CrawlInfoSerializer
-import csv
 from .predict import Predict
+from .serializers import CrawlInfoSerializer
 
 
 class CrawlInfoView(APIView):
@@ -98,37 +99,46 @@ class CrawlInfoView(APIView):
                 )
 
             if current_team and current_match_type:
-                player_stats, _ = PlayerStats.objects.get_or_create(
-                    player=player,
-                    match_type=current_match_type,
-                    current_team=current_team,
-                    matches=matches,
-                    innings=innings,
-                    not_outs=not_outs,
-                    runs=runs,
-                    highest_score=highest_score,
-                    average=float(average),
-                    balls=balls,
-                    strike_rate=float(strike_rate),
-                    hundreds=hundreds,
-                    fifties=fifties,
-                    fours=fours,
-                    sixes=sixes,
-                    catches=catches,
-                    stumpings=stumpings,
-                    bowl_innings=bowl_innings,
-                    bowl_balls=bowl_balls,
-                    bowl_runs=bowl_runs,
-                    bowl_wickets=bowl_wickets,
-                    bowl_best_innings=bowl_best_innings,
-                    bowl_best_match=bowl_best_match,
-                    bowl_average=float(bowl_average),
-                    bowl_economy=float(bowl_economy),
-                    bowl_strike_rate=float(bowl_strike_rate),
-                    bowl_four_wickets=bowl_four_wickets,
-                    bowl_five_wickets=bowl_five_wickets,
-                    bowl_ten_wickets=bowl_ten_wickets
-                )
+                player_stats_queryset = PlayerStats.objects.filter(player=player, match_type=current_match_type)
+
+                player_stats_args = {
+                    'player': player,
+                    'match_type': current_match_type,
+                    'current_team': current_team,
+                    'matches': matches,
+                    'innings': innings,
+                    'not_outs': not_outs,
+                    'runs': runs,
+                    'highest_score': highest_score,
+                    'average': float(average),
+                    'balls': balls,
+                    'strike_rate': float(strike_rate),
+                    'hundreds': hundreds,
+                    'fifties': fifties,
+                    'fours': fours,
+                    'sixes': sixes,
+                    'catches': catches,
+                    'stumpings': stumpings,
+                    'bowl_innings': bowl_innings,
+                    'bowl_balls': bowl_balls,
+                    'bowl_runs': bowl_runs,
+                    'bowl_wickets': bowl_wickets,
+                    'bowl_best_innings': bowl_best_innings,
+                    'bowl_best_match': bowl_best_match,
+                    'bowl_average': float(bowl_average),
+                    'bowl_economy': float(bowl_economy),
+                    'bowl_strike_rate': float(bowl_strike_rate),
+                    'bowl_four_wickets': bowl_four_wickets,
+                    'bowl_five_wickets': bowl_five_wickets,
+                    'bowl_ten_wickets': bowl_ten_wickets
+                }
+
+                if player_stats_queryset.count():
+                    player_stats_args.pop('player')
+                    player_stats_args.pop('match_type')
+                    player_stats_queryset.update(**player_stats_args)
+                else:
+                    PlayerStats.objects.create(**player_stats_args)
         except CricInfoException as e:
             return False
         except TypeError as e:
@@ -216,34 +226,34 @@ class PredictView(APIView):
                 self._age_days_from_born(player.born),
                 player.player_type.id,
                 player.batting_style.id,
-                 bowling_style,
-                 1,
-                 3,
-                 8,
-                 player_stats.matches,
-                 player_stats.innings,
-                 player_stats.not_outs,
-                 player_stats.runs,
-                 int(player_stats.highest_score.replace('*', '')),
-                 player_stats.average,
-                 player_stats.balls,
-                 player_stats.strike_rate,
-                 player_stats.hundreds,
-                 player_stats.fifties,
-                 player_stats.fours,
-                 player_stats.sixes,
-                 player_stats.catches,
-                 player_stats.stumpings,
-                 player_stats.bowl_innings,
-                 player_stats.bowl_balls,
-                 player_stats.bowl_runs,
-                 player_stats.bowl_wickets,
-                 bowl_best_innings,
-                 player_stats.bowl_average,
-                 player_stats.bowl_economy,
-                 player_stats.bowl_strike_rate,
-                 player_stats.bowl_four_wickets,
-                 player_stats.bowl_five_wickets
+                bowling_style,
+                1,
+                3,
+                8,
+                player_stats.matches,
+                player_stats.innings,
+                player_stats.not_outs,
+                player_stats.runs,
+                int(player_stats.highest_score.replace('*', '')),
+                player_stats.average,
+                player_stats.balls,
+                player_stats.strike_rate,
+                player_stats.hundreds,
+                player_stats.fifties,
+                player_stats.fours,
+                player_stats.sixes,
+                player_stats.catches,
+                player_stats.stumpings,
+                player_stats.bowl_innings,
+                player_stats.bowl_balls,
+                player_stats.bowl_runs,
+                player_stats.bowl_wickets,
+                bowl_best_innings,
+                player_stats.bowl_average,
+                player_stats.bowl_economy,
+                player_stats.bowl_strike_rate,
+                player_stats.bowl_four_wickets,
+                player_stats.bowl_five_wickets
             )
 
             row = {
@@ -251,8 +261,6 @@ class PredictView(APIView):
                 'points': points
             }
             player_rows.append(row)
-
-
 
         return Response({
             'result': player_rows
