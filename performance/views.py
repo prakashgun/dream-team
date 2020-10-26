@@ -209,7 +209,7 @@ class PredictView(APIView):
                 player_stats.bowl_best_innings.split('/')[0]) if player_stats.bowl_best_innings else 0
 
             stats = {
-                'player_id': player.id,
+                # 'player_id': player.id,
                 'age_days': self._age_days_from_born(player.born),
                 'player_type': player.player_type.id,
                 'ground': ground.id,
@@ -253,9 +253,9 @@ class PredictView(APIView):
 
             row = {
                 'player_name': player.name,
-                'input': stats.values(),
+                # 'input': stats.values(),
                 'points': points,
-                'score': predict.score
+                'score': round(predict.score, 4)
             }
 
             player_rows.append(row)
@@ -293,7 +293,7 @@ class SaveModelView(APIView):
 
             for match_stat in match_stats:
                 row = {
-                    'id': player.id,
+                    # 'id': player.id,
                     'age_days': self._age_days_from_born(player.born),
                     'player_type': player.player_type.id,
                     'ground': match_stat.match.ground.id,
