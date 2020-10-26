@@ -18,7 +18,7 @@ class Predict:
         if df.empty:
             raise Exception('Dataframe is empty')
 
-        X = df.drop(['points', 'bowling_style'], axis='columns')
+        X = df.drop(['points'], axis='columns')
 
         y = df.points
 
@@ -26,7 +26,7 @@ class Predict:
 
         self.lr_clf = LinearRegression()
         self.lr_clf.fit(X_train, y_train)
-        self.lr_clf.score(X_test, y_test)
+        self.score = self.lr_clf.score(X_test, y_test)
 
         """<h2 style='color:blue'>Use K Fold cross validation to measure accuracy of our LinearRegression model</h2>"""
 
@@ -77,8 +77,8 @@ class Predict:
 
         # find_best_model_using_gridsearchcv(X, y)
 
-    def predict_points(self, *x):
-        return self.lr_clf.predict([x])[0]
+    def predict_points(self, **stats):
+        return self.lr_clf.predict([tuple(stats.values())])[0]
 
         # """<h2 style='color:blue'>Export the tested model to a pickle file</h2>"""
         #

@@ -175,6 +175,8 @@ class PredictView(APIView):
 
     def post(self, request):
         # Validate the incoming input (provided through query parameters)
+        player_type_name = request.query_params.get('player_type_name')
+
         serializer = PredictSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
 
@@ -206,81 +208,57 @@ class PredictView(APIView):
             bowl_best_innings = int(
                 player_stats.bowl_best_innings.split('/')[0]) if player_stats.bowl_best_innings else 0
 
-            points = Predict().predict_points(
-                player.id,
-                self._age_days_from_born(player.born),
-                player.player_type.id,
-                player.batting_style.id,
-                # bowling_style,
-                ground.id,
-                opposite_team.id,
-                player_stats.current_team.id,
-                player_stats.matches,
-                player_stats.innings,
-                player_stats.not_outs,
-                player_stats.runs,
-                int(player_stats.highest_score.replace('*', '')),
-                player_stats.average,
-                player_stats.balls,
-                player_stats.strike_rate,
-                player_stats.hundreds,
-                player_stats.fifties,
-                player_stats.fours,
-                player_stats.sixes,
-                player_stats.catches,
-                player_stats.stumpings,
-                player_stats.bowl_innings,
-                player_stats.bowl_balls,
-                player_stats.bowl_runs,
-                player_stats.bowl_wickets,
-                bowl_best_innings,
-                player_stats.bowl_average,
-                player_stats.bowl_economy,
-                player_stats.bowl_strike_rate,
-                player_stats.bowl_four_wickets,
-                player_stats.bowl_five_wickets
-            )
+            stats = {
+                'player_id': player.id,
+                'age_days': self._age_days_from_born(player.born),
+                'player_type': player.player_type.id,
+                'ground': ground.id,
+                'opposite_team': opposite_team.id,
+                'current_team': player_stats.current_team.id,
+                'matches': player_stats.matches
+            }
+
+            if player_type_name == 'Bowler':
+                stats.update({
+                    'bowling_style': bowling_style,
+                    'bowl_innings': player_stats.bowl_innings,
+                    'bowl_balls': player_stats.bowl_balls,
+                    'bowl_runs': player_stats.bowl_runs,
+                    'bowl_wickets': player_stats.bowl_wickets,
+                    'bowl_best_innings': bowl_best_innings,
+                    'bowl_average': player_stats.bowl_average,
+                    'bowl_economy': player_stats.bowl_economy,
+                    'bowl_strike_rate': player_stats.bowl_strike_rate,
+                    'bowl_four_wickets': player_stats.bowl_four_wickets,
+                    'bowl_five_wickets': player_stats.bowl_five_wickets
+                })
+            else:
+                stats.update({
+                    'batting_style': player.batting_style.id,
+                    'innings': player_stats.innings,
+                    'not_outs': player_stats.not_outs,
+                    'runs': player_stats.runs,
+                    'highest_score': int(player_stats.highest_score.replace('*', '')),
+                    'average': player_stats.average,
+                    'balls': player_stats.balls,
+                    'strike_rate': player_stats.strike_rate,
+                    'hundreds': player_stats.hundreds,
+                    'fifties': player_stats.fifties,
+                    'fours': player_stats.fours,
+                    'sixes': player_stats.sixes
+                })
+
+            predict = Predict()
+            points = predict.predict_points(**stats)
 
             row = {
                 'player_name': player.name,
-                'input': (
-                player.id,
-                self._age_days_from_born(player.born),
-                player.player_type.id,
-                player.batting_style.id,
-                # bowling_style,
-                ground.id,
-                opposite_team.id,
-                player_stats.current_team.id,
-                player_stats.matches,
-                player_stats.innings,
-                player_stats.not_outs,
-                player_stats.runs,
-                int(player_stats.highest_score.replace('*', '')),
-                player_stats.average,
-                player_stats.balls,
-                player_stats.strike_rate,
-                player_stats.hundreds,
-                player_stats.fifties,
-                player_stats.fours,
-                player_stats.sixes,
-                player_stats.catches,
-                player_stats.stumpings,
-                player_stats.bowl_innings,
-                player_stats.bowl_balls,
-                player_stats.bowl_runs,
-                player_stats.bowl_wickets,
-                bowl_best_innings,
-                player_stats.bowl_average,
-                player_stats.bowl_economy,
-                player_stats.bowl_strike_rate,
-                player_stats.bowl_four_wickets,
-                player_stats.bowl_five_wickets
-            ),
-                'points': points
+                'input': stats.values(),
+                'points': points,
+                'score': predict.score
             }
-            player_rows.append(row)
 
+            player_rows.append(row)
         return Response({
             'result': player_rows
         })
@@ -318,38 +296,43 @@ class SaveModelView(APIView):
                     'id': player.id,
                     'age_days': self._age_days_from_born(player.born),
                     'player_type': player.player_type.id,
-                    'batting_style': player.batting_style.id,
-                    'bowling_style': bowling_style,
                     'ground': match_stat.match.ground.id,
                     'opposite_team': match_stat.opposite_team.id,
                     'current_team': match_stat.team.id,
-                    'matches': player_stats.matches,
-                    'innings': player_stats.innings,
-                    'not_outs': player_stats.not_outs,
-                    'runs': player_stats.runs,
-                    'highest_score': int(player_stats.highest_score.replace('*', '')),
-                    'average': player_stats.average,
-                    'balls': player_stats.balls,
-                    'strike_rate': player_stats.strike_rate,
-                    'hundreds': player_stats.hundreds,
-                    'fifties': player_stats.fifties,
-                    'fours': player_stats.fours,
-                    'sixes': player_stats.sixes,
-                    'catches': player_stats.catches,
-                    'stumpings': player_stats.stumpings,
-                    'bowl_innings': player_stats.bowl_innings,
-                    'bowl_balls': player_stats.bowl_balls,
-                    'bowl_runs': player_stats.bowl_runs,
-                    'bowl_wickets': player_stats.bowl_wickets,
-                    'bowl_best_innings': bowl_best_innings,
-                    'bowl_average': player_stats.bowl_average,
-                    'bowl_economy': player_stats.bowl_economy,
-                    'bowl_strike_rate': player_stats.bowl_strike_rate,
-                    'bowl_four_wickets': player_stats.bowl_four_wickets,
-                    'bowl_five_wickets': player_stats.bowl_five_wickets,
-                    'points': self._calculate_points(match_stat.runs, match_stat.wickets)
+                    'matches': player_stats.matches
                 }
 
+                if player_type_name == 'Bowler':
+                    row.update({
+                        'bowling_style': bowling_style,
+                        'bowl_innings': player_stats.bowl_innings,
+                        'bowl_balls': player_stats.bowl_balls,
+                        'bowl_runs': player_stats.bowl_runs,
+                        'bowl_wickets': player_stats.bowl_wickets,
+                        'bowl_best_innings': bowl_best_innings,
+                        'bowl_average': player_stats.bowl_average,
+                        'bowl_economy': player_stats.bowl_economy,
+                        'bowl_strike_rate': player_stats.bowl_strike_rate,
+                        'bowl_four_wickets': player_stats.bowl_four_wickets,
+                        'bowl_five_wickets': player_stats.bowl_five_wickets
+                    })
+                else:
+                    row.update({
+                        'batting_style': player.batting_style.id,
+                        'innings': player_stats.innings,
+                        'not_outs': player_stats.not_outs,
+                        'runs': player_stats.runs,
+                        'highest_score': int(player_stats.highest_score.replace('*', '')),
+                        'average': player_stats.average,
+                        'balls': player_stats.balls,
+                        'strike_rate': player_stats.strike_rate,
+                        'hundreds': player_stats.hundreds,
+                        'fifties': player_stats.fifties,
+                        'fours': player_stats.fours,
+                        'sixes': player_stats.sixes
+                    })
+
+                row['points'] = self._calculate_points(match_stat.runs, match_stat.wickets, player_type_name)
                 player_rows.append(row)
 
         with open('player_rows.csv', 'w') as file:
@@ -368,5 +351,5 @@ class SaveModelView(APIView):
         dob = datetime.strptime(','.join(born.split(',')[:2]), '%B %d, %Y')
         return abs((datetime.now() - dob).days)
 
-    def _calculate_points(self, runs, wickets):
-        return runs + wickets * 25
+    def _calculate_points(self, runs, wickets, player_type_name):
+        return (wickets * 25) if player_type_name == 'Bowler' else runs
