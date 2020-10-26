@@ -1,39 +1,32 @@
 import pandas as pd
-import numpy as np
-from sklearn.model_selection import train_test_split
+from sklearn.linear_model import Lasso
 from sklearn.linear_model import LinearRegression
+from sklearn.model_selection import GridSearchCV
 from sklearn.model_selection import ShuffleSplit
 from sklearn.model_selection import cross_val_score
-from sklearn.model_selection import GridSearchCV
-
-from sklearn.linear_model import Lasso
+from sklearn.model_selection import train_test_split
 from sklearn.tree import DecisionTreeRegressor
-import pickle
-import json
+
 
 class Predict:
 
     def __init__(self):
         """<h2 style='color:blue'>Data Load: Load banglore home prices into a dataframe</h2>"""
 
-        df = pd.read_csv("ipl/player_rows.csv")
+        df = pd.read_csv("/home/prakash/Documents/code/projects/dream-team/player_rows.csv")
 
-        X = df.drop(['points'], axis='columns')
-        # print('X')
-        # print(X.head(3))
+        if df.empty:
+            raise Exception('Dataframe is empty')
 
-        print('y')
+        X = df.drop(['points', 'bowling_style'], axis='columns')
+
         y = df.points
-        print(y.head(3))
-
-        print('Y length')
-        print(len(y))
 
         X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=10)
 
-        lr_clf = LinearRegression()
-        lr_clf.fit(X_train, y_train)
-        lr_clf.score(X_test, y_test)
+        self.lr_clf = LinearRegression()
+        self.lr_clf.fit(X_train, y_train)
+        self.lr_clf.score(X_test, y_test)
 
         """<h2 style='color:blue'>Use K Fold cross validation to measure accuracy of our LinearRegression model</h2>"""
 
@@ -41,13 +34,10 @@ class Predict:
 
         cross_val_score(LinearRegression(), X, y, cv=cv)
 
-        self.lr_clf = lr_clf
-
         """**We can see that in 5 iterations we get a score above 80% all the time. This is pretty good but we want to test few other algorithms for regression to see if we can get even better score. We will use GridSearchCV for this purpose**
         
         <h2 style='color:blue'>Find best model using GridSearchCV</h2>
         """
-
 
     def find_best_model_using_gridsearchcv(X, y):
         algos = {
@@ -85,11 +75,7 @@ class Predict:
 
         return pd.DataFrame(scores, columns=['model', 'best_score', 'best_params'])
 
-
         # find_best_model_using_gridsearchcv(X, y)
-
-
-
 
     def predict_points(self, *x):
         return self.lr_clf.predict([x])[0]

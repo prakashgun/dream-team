@@ -11,7 +11,7 @@ from .crawlers import CricInfoPlayer, CricInfoException
 from .models import (Player, PlayerType, BattingStyle, BowlingStyle, PlayerStats, Team, MatchType, Ground,
                      Tournament, MatchStats, Match)
 from .predict import Predict
-from .serializers import CrawlInfoSerializer
+from .serializers import CrawlInfoSerializer, PredictSerializer
 
 
 class CrawlInfoView(APIView):
@@ -164,14 +164,6 @@ class CrawlInfoView(APIView):
 
 class PredictView(APIView):
 
-    def get(self, request):
-
-        return Response(
-            {
-                'message': "Input data for output"
-            }
-        )
-
     def _age_days_from_born(self, born):
         if not born:
             return None
@@ -183,7 +175,7 @@ class PredictView(APIView):
 
     def post(self, request):
         # Validate the incoming input (provided through query parameters)
-        serializer = CrawlInfoSerializer(data=request.data)
+        serializer = PredictSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
 
         # Get the model input
@@ -199,19 +191,12 @@ class PredictView(APIView):
 
             player = players[0]
             bowling_style = player.bowling_style.id if player.bowling_style else None
-            match_stats = MatchStats.objects.all()
             player_stats_rows = PlayerStats.objects.filter(player=player)
-
-            # return Response({
-            #     'result': f'comes here first {player.name}'
-            # })
+            ground, _ = Ground.objects.get_or_create(name=data['ground'])
+            opposite_team = Team.objects.get(name=data['opposite_team'])
 
             if not player_stats_rows:
                 continue
-
-            # return Response({
-            #     'result': 'comes here'
-            # })
 
             player_stats = player_stats_rows[0]
 
@@ -221,15 +206,15 @@ class PredictView(APIView):
             bowl_best_innings = int(
                 player_stats.bowl_best_innings.split('/')[0]) if player_stats.bowl_best_innings else 0
 
-            points = Predict.predict_points(
+            points = Predict().predict_points(
                 player.id,
                 self._age_days_from_born(player.born),
                 player.player_type.id,
                 player.batting_style.id,
-                bowling_style,
-                1,
-                3,
-                8,
+                # bowling_style,
+                ground.id,
+                opposite_team.id,
+                player_stats.current_team.id,
                 player_stats.matches,
                 player_stats.innings,
                 player_stats.not_outs,
@@ -257,7 +242,41 @@ class PredictView(APIView):
             )
 
             row = {
-                'player_name': Player.name,
+                'player_name': player.name,
+                'input': (
+                player.id,
+                self._age_days_from_born(player.born),
+                player.player_type.id,
+                player.batting_style.id,
+                # bowling_style,
+                ground.id,
+                opposite_team.id,
+                player_stats.current_team.id,
+                player_stats.matches,
+                player_stats.innings,
+                player_stats.not_outs,
+                player_stats.runs,
+                int(player_stats.highest_score.replace('*', '')),
+                player_stats.average,
+                player_stats.balls,
+                player_stats.strike_rate,
+                player_stats.hundreds,
+                player_stats.fifties,
+                player_stats.fours,
+                player_stats.sixes,
+                player_stats.catches,
+                player_stats.stumpings,
+                player_stats.bowl_innings,
+                player_stats.bowl_balls,
+                player_stats.bowl_runs,
+                player_stats.bowl_wickets,
+                bowl_best_innings,
+                player_stats.bowl_average,
+                player_stats.bowl_economy,
+                player_stats.bowl_strike_rate,
+                player_stats.bowl_four_wickets,
+                player_stats.bowl_five_wickets
+            ),
                 'points': points
             }
             player_rows.append(row)
@@ -267,36 +286,16 @@ class PredictView(APIView):
         })
 
 
-class GivePrediction(APIView):
+class SaveModelView(APIView):
 
     def get(self, request):
 
-        return Response(
-            {
-                'message': "Input data for output"
-            }
-        )
-
-    def _age_days_from_born(self, born):
-        if not born:
-            return None
-        dob = datetime.strptime(','.join(born.split(',')[:2]), '%B %d, %Y')
-        return abs((datetime.now() - dob).days)
-
-    def _calculate_points(self, runs, wickets):
-        return runs + wickets * 25
-
-    def post(self, request):
-        # Validate the incoming input (provided through query parameters)
-        serializer = CrawlInfoSerializer(data=request.data)
-        serializer.is_valid(raise_exception=True)
-
-        # Get the model input
-        data = serializer.validated_data
+        player_type_name = request.query_params.get('player_type_name')
+        player_type = PlayerType.objects.get(name=player_type_name)
 
         player_rows = []
 
-        players = Player.objects.all()
+        players = Player.objects.filter(player_type=player_type)
 
         for player in players:
             bowling_style = player.bowling_style.id if player.bowling_style else None
@@ -360,5 +359,14 @@ class GivePrediction(APIView):
                 writer.writerow(index)
 
         return Response({
-            'result': player_rows
+            'result': len(player_rows)
         })
+
+    def _age_days_from_born(self, born):
+        if not born:
+            return None
+        dob = datetime.strptime(','.join(born.split(',')[:2]), '%B %d, %Y')
+        return abs((datetime.now() - dob).days)
+
+    def _calculate_points(self, runs, wickets):
+        return runs + wickets * 25
