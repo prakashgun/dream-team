@@ -211,16 +211,16 @@ class PredictView(APIView):
             stats = {
                 # 'player_id': player.id,
                 'age_days': self._age_days_from_born(player.born),
-                'player_type': player.player_type.id,
-                'ground': ground.id,
-                'opposite_team': opposite_team.id,
-                'current_team': player_stats.current_team.id,
+                # 'player_type': player.player_type.name,
+                # 'ground': ground.name,
+                # 'opposite_team': opposite_team.name,
+                # 'current_team': player_stats.current_team.name,
                 'matches': player_stats.matches
             }
 
             if player_type_name == 'Bowler':
                 stats.update({
-                    'bowling_style': bowling_style,
+                    # 'bowling_style': bowling_style.name,
                     'bowl_innings': player_stats.bowl_innings,
                     'bowl_balls': player_stats.bowl_balls,
                     'bowl_runs': player_stats.bowl_runs,
@@ -234,7 +234,7 @@ class PredictView(APIView):
                 })
             else:
                 stats.update({
-                    'batting_style': player.batting_style.id,
+                    # 'batting_style': player.batting_style.name,
                     'innings': player_stats.innings,
                     'not_outs': player_stats.not_outs,
                     'runs': player_stats.runs,
@@ -295,16 +295,18 @@ class SaveModelView(APIView):
                 row = {
                     # 'id': player.id,
                     'age_days': self._age_days_from_born(player.born),
-                    'player_type': player.player_type.id,
-                    'ground': match_stat.match.ground.id,
-                    'opposite_team': match_stat.opposite_team.id,
-                    'current_team': match_stat.team.id,
+                    # 'player_type': player.player_type.name,
+                    # 'ground': match_stat.match.ground.name,
+                    # 'opposite_team': match_stat.opposite_team.name,
+                    # 'current_team': match_stat.team.name,
                     'matches': player_stats.matches
                 }
 
                 if player_type_name == 'Bowler':
+                    if not match_stat.bowled:
+                        continue
                     row.update({
-                        'bowling_style': bowling_style,
+                        # 'bowling_style': bowling_style.name,
                         'bowl_innings': player_stats.bowl_innings,
                         'bowl_balls': player_stats.bowl_balls,
                         'bowl_runs': player_stats.bowl_runs,
@@ -317,8 +319,10 @@ class SaveModelView(APIView):
                         'bowl_five_wickets': player_stats.bowl_five_wickets
                     })
                 else:
+                    if not match_stat.batted:
+                        continue
                     row.update({
-                        'batting_style': player.batting_style.id,
+                        # 'batting_style': player.batting_style.name,
                         'innings': player_stats.innings,
                         'not_outs': player_stats.not_outs,
                         'runs': player_stats.runs,
