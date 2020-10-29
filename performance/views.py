@@ -12,6 +12,9 @@ from .models import (Player, PlayerType, BattingStyle, BowlingStyle, PlayerStats
                      Tournament, MatchStats, Match)
 from .predict import Predict
 from .serializers import CrawlInfoSerializer, PredictSerializer
+import logging
+
+logger = logging.getLogger(__name__)
 
 
 class CrawlInfoView(APIView):
@@ -28,6 +31,7 @@ class CrawlInfoView(APIView):
             name, full_name, born, player_type_name, batting_style_name, bowling_style_name = cricinfo.get_player_details()
 
             if not all((name, full_name, born, player_type_name, batting_style_name, bowling_style_name)):
+                logger.error(f'Basic info not exists for {name}')
                 return False
 
             player_type, _ = PlayerType.objects.get_or_create(name=player_type_name)
@@ -63,6 +67,7 @@ class CrawlInfoView(APIView):
                  match_type_name) = match_details
 
                 if not team_name or not match_type_name:
+                    logger.error(f'Team name and match type not exists for {name}')
                     continue
 
                 team, _ = Team.objects.get_or_create(name=team_name)
@@ -98,50 +103,61 @@ class CrawlInfoView(APIView):
                     wickets=wickets
                 )
 
-            if current_team and current_match_type:
-                player_stats_queryset = PlayerStats.objects.filter(player=player, match_type=current_match_type)
+            if not current_team:
+                logger.error(f'Current team not exists for {name}')
+                return False
 
-                player_stats_args = {
-                    'player': player,
-                    'match_type': current_match_type,
-                    'current_team': current_team,
-                    'matches': matches,
-                    'innings': innings,
-                    'not_outs': not_outs,
-                    'runs': runs,
-                    'highest_score': highest_score,
-                    'average': float(average),
-                    'balls': balls,
-                    'strike_rate': float(strike_rate),
-                    'hundreds': hundreds,
-                    'fifties': fifties,
-                    'fours': fours,
-                    'sixes': sixes,
-                    'catches': catches,
-                    'stumpings': stumpings,
-                    'bowl_innings': bowl_innings,
-                    'bowl_balls': bowl_balls,
-                    'bowl_runs': bowl_runs,
-                    'bowl_wickets': bowl_wickets,
-                    'bowl_best_innings': bowl_best_innings,
-                    'bowl_best_match': bowl_best_match,
-                    'bowl_average': float(bowl_average),
-                    'bowl_economy': float(bowl_economy),
-                    'bowl_strike_rate': float(bowl_strike_rate),
-                    'bowl_four_wickets': bowl_four_wickets,
-                    'bowl_five_wickets': bowl_five_wickets,
-                    'bowl_ten_wickets': bowl_ten_wickets
-                }
+            if not current_match_type:
+                logger.error(f'Current match type not exists for {name}')
+                return False
 
-                if player_stats_queryset.count():
-                    player_stats_args.pop('player')
-                    player_stats_args.pop('match_type')
-                    player_stats_queryset.update(**player_stats_args)
-                else:
-                    PlayerStats.objects.create(**player_stats_args)
+            player_stats_queryset = PlayerStats.objects.filter(player=player, match_type=current_match_type)
+
+            player_stats_args = {
+                'player': player,
+                'match_type': current_match_type,
+                'current_team': current_team,
+                'matches': matches,
+                'innings': innings,
+                'not_outs': not_outs,
+                'runs': runs,
+                'highest_score': highest_score,
+                'average': float(average),
+                'balls': balls,
+                'strike_rate': float(strike_rate),
+                'hundreds': hundreds,
+                'fifties': fifties,
+                'fours': fours,
+                'sixes': sixes,
+                'catches': catches,
+                'stumpings': stumpings,
+                'bowl_innings': bowl_innings,
+                'bowl_balls': bowl_balls,
+                'bowl_runs': bowl_runs,
+                'bowl_wickets': bowl_wickets,
+                'bowl_best_innings': bowl_best_innings,
+                'bowl_best_match': bowl_best_match,
+                'bowl_average': float(bowl_average),
+                'bowl_economy': float(bowl_economy),
+                'bowl_strike_rate': float(bowl_strike_rate),
+                'bowl_four_wickets': bowl_four_wickets,
+                'bowl_five_wickets': bowl_five_wickets,
+                'bowl_ten_wickets': bowl_ten_wickets
+            }
+
+            if player_stats_queryset.count():
+                player_stats_args.pop('player')
+                player_stats_args.pop('match_type')
+                player_stats_queryset.update(**player_stats_args)
+            else:
+                PlayerStats.objects.create(**player_stats_args)
         except CricInfoException as e:
+            logger.error(f'Failed crawling for {crawl_id}')
+            logger.exception(e)
             return False
         except TypeError as e:
+            logger.error(f'Failed crawling for {crawl_id}')
+            logger.exception(e)
             return False
 
     def post(self, request):
@@ -258,7 +274,8 @@ class PredictView(APIView):
                 'score': round(predict.score, 4)
             }
 
-            player_rows.append(row)
+            if points > 10:
+                player_rows.append(row)
         return Response({
             'result': player_rows
         })
@@ -277,7 +294,7 @@ class SaveModelView(APIView):
 
         for player in players:
             bowling_style = player.bowling_style.id if player.bowling_style else None
-            match_stats = MatchStats.objects.all()
+            match_stats = MatchStats.objects.filter(player=player)
             player_stats_rows = PlayerStats.objects.filter(player=player)
 
             if not player_stats_rows:
@@ -291,53 +308,65 @@ class SaveModelView(APIView):
             bowl_best_innings = int(
                 player_stats.bowl_best_innings.split('/')[0]) if player_stats.bowl_best_innings else 0
 
+            row = {
+                # 'id': player.id,
+                'age_days': self._age_days_from_born(player.born),
+                # 'player_type': player.player_type.name,
+                # 'ground': match_stat.match.ground.name,
+                # 'opposite_team': match_stat.opposite_team.name,
+                # 'current_team': match_stat.team.name,
+                'matches': player_stats.matches
+            }
+
+            if player_type_name == 'Bowler':
+                row.update({
+                    # 'bowling_style': bowling_style.name,
+                    'bowl_innings': player_stats.bowl_innings,
+                    'bowl_balls': player_stats.bowl_balls,
+                    'bowl_runs': player_stats.bowl_runs,
+                    'bowl_wickets': player_stats.bowl_wickets,
+                    'bowl_best_innings': bowl_best_innings,
+                    'bowl_average': player_stats.bowl_average,
+                    'bowl_economy': player_stats.bowl_economy,
+                    'bowl_strike_rate': player_stats.bowl_strike_rate,
+                    'bowl_four_wickets': player_stats.bowl_four_wickets,
+                    'bowl_five_wickets': player_stats.bowl_five_wickets
+                })
+            else:
+                row.update({
+                    # 'batting_style': player.batting_style.name,
+                    'innings': player_stats.innings,
+                    'not_outs': player_stats.not_outs,
+                    'runs': player_stats.runs,
+                    'highest_score': int(player_stats.highest_score.replace('*', '')),
+                    'average': player_stats.average,
+                    'balls': player_stats.balls,
+                    'strike_rate': player_stats.strike_rate,
+                    'hundreds': player_stats.hundreds,
+                    'fifties': player_stats.fifties,
+                    'fours': player_stats.fours,
+                    'sixes': player_stats.sixes
+                })
+
+            match_stats_total_runs = 0
+            match_stats_total_wickets = 0
+
+            match_bowl_innings = 0
+            match_bat_innings = 0
             for match_stat in match_stats:
-                row = {
-                    # 'id': player.id,
-                    'age_days': self._age_days_from_born(player.born),
-                    # 'player_type': player.player_type.name,
-                    # 'ground': match_stat.match.ground.name,
-                    # 'opposite_team': match_stat.opposite_team.name,
-                    # 'current_team': match_stat.team.name,
-                    'matches': player_stats.matches
-                }
+                if match_stat.batted:
+                    match_bat_innings += 1
+                if match_stat.bowled:
+                    match_bowl_innings += 1
+                match_stats_total_runs += match_stat.runs
+                match_stats_total_wickets += match_stat.wickets
+            row['points'] = self._calculate_points(match_stats_total_runs, match_stats_total_wickets, player_type_name,
+                                                   match_bat_innings, match_bowl_innings)
 
-                if player_type_name == 'Bowler':
-                    if not match_stat.bowled:
-                        continue
-                    row.update({
-                        # 'bowling_style': bowling_style.name,
-                        'bowl_innings': player_stats.bowl_innings,
-                        'bowl_balls': player_stats.bowl_balls,
-                        'bowl_runs': player_stats.bowl_runs,
-                        'bowl_wickets': player_stats.bowl_wickets,
-                        'bowl_best_innings': bowl_best_innings,
-                        'bowl_average': player_stats.bowl_average,
-                        'bowl_economy': player_stats.bowl_economy,
-                        'bowl_strike_rate': player_stats.bowl_strike_rate,
-                        'bowl_four_wickets': player_stats.bowl_four_wickets,
-                        'bowl_five_wickets': player_stats.bowl_five_wickets
-                    })
-                else:
-                    if not match_stat.batted:
-                        continue
-                    row.update({
-                        # 'batting_style': player.batting_style.name,
-                        'innings': player_stats.innings,
-                        'not_outs': player_stats.not_outs,
-                        'runs': player_stats.runs,
-                        'highest_score': int(player_stats.highest_score.replace('*', '')),
-                        'average': player_stats.average,
-                        'balls': player_stats.balls,
-                        'strike_rate': player_stats.strike_rate,
-                        'hundreds': player_stats.hundreds,
-                        'fifties': player_stats.fifties,
-                        'fours': player_stats.fours,
-                        'sixes': player_stats.sixes
-                    })
+            if match_bat_innings == 0 and match_bowl_innings == 0:
+                continue
 
-                row['points'] = self._calculate_points(match_stat.runs, match_stat.wickets, player_type_name)
-                player_rows.append(row)
+            player_rows.append(row)
 
         with open('player_rows.csv', 'w') as file:
             writer = csv.DictWriter(file, player_rows[0].keys())
@@ -355,5 +384,9 @@ class SaveModelView(APIView):
         dob = datetime.strptime(','.join(born.split(',')[:2]), '%B %d, %Y')
         return abs((datetime.now() - dob).days)
 
-    def _calculate_points(self, runs, wickets, player_type_name):
-        return (wickets * 25) if player_type_name == 'Bowler' else runs
+    def _calculate_points(self, runs, wickets, player_type_name, match_bat_innings, match_bowl_innings):
+        try:
+            points = (wickets * 25) / match_bowl_innings if player_type_name == 'Bowler' else runs / match_bat_innings
+            return points
+        except ZeroDivisionError as e:
+            return 0

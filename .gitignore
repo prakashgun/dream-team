@@ -4,6 +4,9 @@ venv
 # IDE
 .idea
 
+# Locks
+.~lock.*
+
 # Others
 __pycache__
 *.pyc
