@@ -7,6 +7,9 @@ venv
 # Locks
 .~lock.*
 
+# Results
+player_rows_*
+
 # Others
 __pycache__
 *.pyc

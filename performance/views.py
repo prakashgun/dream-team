@@ -1,4 +1,5 @@
 import csv
+import logging
 import os
 from datetime import datetime
 from time import sleep
@@ -12,7 +13,7 @@ from .models import (Player, PlayerType, BattingStyle, BowlingStyle, PlayerStats
                      Tournament, MatchStats, Match)
 from .predict import Predict
 from .serializers import CrawlInfoSerializer, PredictSerializer
-import logging
+from django.db.models import Q
 
 logger = logging.getLogger(__name__)
 
@@ -28,9 +29,10 @@ class CrawlInfoView(APIView):
     def _crawl(self, crawl_id):
         try:
             cricinfo = CricInfoPlayer(crawl_id)
-            name, full_name, born, player_type_name, batting_style_name, bowling_style_name = cricinfo.get_player_details()
+            name, full_name, born, player_type_name, batting_style_name, bowling_style_name \
+                = cricinfo.get_player_details()
 
-            if not all((name, full_name, born, player_type_name, batting_style_name, bowling_style_name)):
+            if not all((name, full_name, born, player_type_name, batting_style_name)):
                 logger.error(f'Basic info not exists for {name}')
                 return False
 
@@ -264,7 +266,9 @@ class PredictView(APIView):
                     'sixes': player_stats.sixes
                 })
 
-            predict = Predict()
+            predict = Predict(
+                f'/home/prakash/Documents/code/projects/dream-team/player_rows_{player_type_name}.csv'
+            )
             points = predict.predict_points(**stats)
 
             row = {
@@ -274,10 +278,10 @@ class PredictView(APIView):
                 'score': round(predict.score, 4)
             }
 
-            if points > 10:
-                player_rows.append(row)
+            player_rows.append(row)
+
         return Response({
-            'result': player_rows
+            'result': sorted(player_rows, key=lambda k: k['points'], reverse=True)
         })
 
 
@@ -366,9 +370,12 @@ class SaveModelView(APIView):
             if match_bat_innings == 0 and match_bowl_innings == 0:
                 continue
 
+            if row['points'] == 0:
+                continue
+
             player_rows.append(row)
 
-        with open('player_rows.csv', 'w') as file:
+        with open(f'player_rows_{player_type_name}.csv', 'w') as file:
             writer = csv.DictWriter(file, player_rows[0].keys())
             writer.writeheader()
             for index in player_rows:

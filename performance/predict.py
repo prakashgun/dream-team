@@ -10,10 +10,10 @@ from sklearn.tree import DecisionTreeRegressor
 
 class Predict:
 
-    def __init__(self):
+    def __init__(self, file_location):
         """<h2 style='color:blue'>Data Load: Load banglore home prices into a dataframe</h2>"""
 
-        df = pd.read_csv("/home/prakash/Documents/code/projects/dream-team/player_rows.csv")
+        df = pd.read_csv(file_location)
 
         if df.empty:
             raise Exception('Dataframe is empty')
