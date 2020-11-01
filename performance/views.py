@@ -275,7 +275,7 @@ class PredictView(APIView):
                 'player_name': player.name,
                 # 'input': stats.values(),
                 'points': points,
-                'score': round(predict.score, 4)
+                'score': round(predict.score, 1)
             }
 
             player_rows.append(row)
@@ -394,6 +394,6 @@ class SaveModelView(APIView):
     def _calculate_points(self, runs, wickets, player_type_name, match_bat_innings, match_bowl_innings):
         try:
             points = (wickets * 25) / match_bowl_innings if player_type_name == 'Bowler' else runs / match_bat_innings
-            return points
+            return round(points, 1)
         except ZeroDivisionError as e:
             return 0
